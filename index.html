@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Склад 36×36 м — Видеонаблюдение (без подписей камер)</title>
+    <style>
+        body { margin: 0; overflow: hidden; font-family: Arial, sans-serif; background: #1a1a2e; }
+        #controls {
+            position: absolute; top: 10px; left: 10px; color: white;
+            background: rgba(0,0,0,0.9); padding: 15px; border-radius: 8px;
+            font-size: 13px; line-height: 1.5; max-width: 420px; z-index: 100;
+        }
+        #controls h2 { margin: 0 0 10px 0; color: #ffd700; font-size: 16px; }
+        .btn {
+            display: block; width: 100%; padding: 10px; margin: 5px 0;
+            background: #333; color: white; border: 2px solid #555;
+            border-radius: 5px; cursor: pointer; font-size: 13px; text-align: left;
+        }
+        .btn:hover { background: #444; }
+        .btn.active { background: #ffd700; color: #000; border-color: #ffd700; }
+        .legend { display: flex; align-items: center; margin: 3px 0; font-size: 12px; }
+        .color-box { width: 14px; height: 14px; margin-right: 8px; border: 1px solid #555; flex-shrink: 0; }
+        #info {
+            position: absolute; bottom: 10px; left: 10px; color: white;
+            background: rgba(0,0,0,0.85); padding: 12px; border-radius: 8px;
+            font-size: 12px; max-width: 420px;
+        }
+    </style>
+</head>
+<body>
+<div id="controls">
+    <h2>📹 Система видеонаблюдения</h2>
+    <button class="btn active" onclick="showVariant(1)">1️⃣ Вариант 1: 2 камеры (3,5 м)</button>
+    <button class="btn" onclick="showVariant(2)">2️⃣ Вариант 2: 4 камеры (3,5 м + 3,0 м)</button>
+    <button class="btn" onclick="showVariant(3)">3️⃣ Вариант 3: 6 камер (3,5 м + 3,0 м)</button>
+    <hr style="border-color:#555; margin: 10px 0;">
+    <div class="legend"><div class="color-box" style="background:#e8d44d"></div>Колонны (15 шт)</div>
+    <div class="legend"><div class="color-box" style="background:#888"></div>Второй этаж (14×31 м)</div>
+    <div class="legend"><div class="color-box" style="background:#4a90e2"></div>Офис 14×4 м</div>
+    <div class="legend"><div class="color-box" style="background:#e74c3c"></div>Санузел+котельная</div>
+    <div class="legend"><div class="color-box" style="background:#2c3e50"></div>Ворота (4×4 м)</div>
+    <div class="legend"><div class="color-box" style="background:#4682B4"></div>Лестница на 2-й этаж</div>
+    <div class="legend"><div class="color-box" style="background:#ff0000"></div>Камеры (h=3,5 м)</div>
+    <div class="legend"><div class="color-box" style="background:#ff8800"></div>Камеры (h=3,0 м)</div>
+</div>
+
+<div id="info">
+    <b>Управление:</b> ЛКМ — вращение | ПКМ — перемещение | Колесо — зум<br>
+    <i>Все камеры направлены на ворота. CAM-3/4 параллельно CAM-1/2 на высоте 3,0 м.</i>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+// ===== СЦЕНА =====
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x87CEEB);
+scene.fog = new THREE.Fog(0x87CEEB, 80, 250);
+
+const camera = new THREE.PerspectiveCamera(50, window.innerWidth/window.innerHeight, 0.1, 1000);
+camera.position.set(50, 40, 50);
+
+const renderer = new THREE.WebGLRenderer({antialias: true});
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+document.body.appendChild(renderer.domElement);
+
+const controls = new THREE.OrbitControls(camera, renderer.domElement);
+controls.target.set(0, 2, 0);
+controls.enableDamping = true;
+
+// ===== ОСВЕЩЕНИЕ =====
+scene.add(new THREE.AmbientLight(0xffffff, 0.7));
+const sun = new THREE.DirectionalLight(0xffffff, 1.0);
+sun.position.set(30, 50, 30);
+sun.castShadow = true;
+sun.shadow.mapSize.width = 2048;
+sun.shadow.mapSize.height = 2048;
+sun.shadow.camera.left = -40;
+sun.shadow.camera.right = 40;
+sun.shadow.camera.top = 40;
+sun.shadow.camera.bottom = -40;
+scene.add(sun);
+
+// ===== МАТЕРИАЛЫ =====
+const matFloor = new THREE.MeshStandardMaterial({color: 0x8a8a8a, roughness: 0.9});
+const matWall = new THREE.MeshStandardMaterial({color: 0xe8d44d, transparent: true, opacity: 0.15, side: THREE.DoubleSide});
+const matColumn = new THREE.MeshStandardMaterial({color: 0xe8d44d});
+const matStripe = new THREE.MeshStandardMaterial({color: 0xff6600});
+const matMezz = new THREE.MeshStandardMaterial({color: 0x888888, transparent: true, opacity: 0.9});
+const matMezzWall = new THREE.MeshStandardMaterial({color: 0xaaaaaa, transparent: true, opacity: 0.6});
+const matOffice = new THREE.MeshStandardMaterial({color: 0x4a90e2, transparent: true, opacity: 0.8});
+const matBath = new THREE.MeshStandardMaterial({color: 0xe74c3c, transparent: true, opacity: 0.8});
+const matGate = new THREE.MeshStandardMaterial({color: 0x2c3e50});
+const matStairs = new THREE.MeshStandardMaterial({color: 0x4682B4});
+
+const matWindowGlass = new THREE.MeshStandardMaterial({
+    color: 0xFFFFFF, transparent: true, opacity: 0.3,
+    emissive: 0xE0F7FA, emissiveIntensity: 0.8,
+    side: THREE.DoubleSide, roughness: 0.1, metalness: 0.1
+});
+const matWindowFrame = new THREE.MeshStandardMaterial({color: 0xFFFFFF, roughness: 0.5});
+
+// ===== ПОЛ =====
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(36, 36), matFloor);
+floor.rotation.x = -Math.PI / 2;
+floor.receiveShadow = true;
+scene.add(floor);
+
+const grid = new THREE.GridHelper(36, 36, 0x555555, 0x333333);
+grid.position.y = 0.01;
+scene.add(grid);
+
+// ===== СТЕНЫ =====
+function addWall(x, y, z, w, h, d) {
+    const wall = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), matWall);
+    wall.position.set(x, y, z);
+    scene.add(wall);
+}
+addWall(0, 2.5, -18, 36, 5, 0.2);
+addWall(0, 2.5, 18, 36, 5, 0.2);
+addWall(-18, 2.5, 0, 0.2, 5, 36);
+addWall(18, 2.5, 0, 0.2, 5, 36);
+
+// ===== ОКНА =====
+for (let i = 0; i < 12; i++) {
+    const zPos = -16.5 + i * 3.0;
+    const yPos = 2.0 + (1.3 / 2);
+    const frame = new THREE.Mesh(new THREE.BoxGeometry(0.15, 1.5, 2.6), matWindowFrame);
+    frame.position.set(17.9, yPos, zPos);
+    scene.add(frame);
+    const glass = new THREE.Mesh(new THREE.BoxGeometry(0.05, 1.3, 2.4), matWindowGlass);
+    glass.position.set(17.9, yPos, zPos);
+    scene.add(glass);
+}
+
+const frontWindowX = 15;
+const frontWindowZ = -17.9;
+const frontWindowY = 2.0 + (1.3 / 2);
+const frontFrame = new THREE.Mesh(new THREE.BoxGeometry(2.6, 1.5, 0.15), matWindowFrame);
+frontFrame.position.set(frontWindowX, frontWindowY, frontWindowZ);
+scene.add(frontFrame);
+const frontGlass = new THREE.Mesh(new THREE.BoxGeometry(2.4, 1.3, 0.05), matWindowGlass);
+frontGlass.position.set(frontWindowX, frontWindowY, frontWindowZ);
+scene.add(frontGlass);
+
+// ===== ВТОРОЙ ЭТАЖ =====
+const mezzFloor = new THREE.Mesh(new THREE.BoxGeometry(14, 0.3, 31), matMezz);
+mezzFloor.position.set(0, 3.5, -2.5);
+mezzFloor.castShadow = true;
+mezzFloor.receiveShadow = true;
+scene.add(mezzFloor);
+
+const mezzWalls = [
+    {pos: [0, 4.25, 13], size: [14, 1.5, 0.2]},
+    {pos: [-7, 4.25, -2.5], size: [0.2, 1.5, 31]},
+    {pos: [7, 4.25, -2.5], size: [0.2, 1.5, 31]}
+];
+mezzWalls.forEach(w => {
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(...w.size), matMezzWall);
+    mesh.position.set(...w.pos);
+    scene.add(mesh);
+});
+
+// ===== 15 КОЛОНН =====
+const colX = [-6.5, 0.5, 6.5];
+const colZ = [-11.5, -5.5, 0.5, 6.5, 12.5];
+colX.forEach((x) => {
+    colZ.forEach((z) => {
+        const col = new THREE.Mesh(new THREE.BoxGeometry(0.4, 3.5, 0.4), matColumn);
+        col.position.set(x, 1.75, z);
+        col.castShadow = true;
+        scene.add(col);
+        const stripe = new THREE.Mesh(new THREE.BoxGeometry(0.42, 1, 0.42), matStripe);
+        stripe.position.set(x, 0.5, z);
+        scene.add(stripe);
+    });
+});
+
+// ===== ОФИС И САНУЗЕЛ =====
+const office = new THREE.Mesh(new THREE.BoxGeometry(14, 3, 4), matOffice);
+office.position.set(0, 1.5, 16);
+office.castShadow = true;
+scene.add(office);
+
+const bath = new THREE.Mesh(new THREE.BoxGeometry(4, 3, 7), matBath);
+bath.position.set(-16, 1.5, 14.5);
+bath.castShadow = true;
+scene.add(bath);
+
+// ===== ВОРОТА С НОМЕРАМИ =====
+function addGate(x, z, label) {
+    const gate = new THREE.Mesh(new THREE.BoxGeometry(4, 4, 0.3), matGate);
+    gate.position.set(x, 2, z);
+    scene.add(gate);
+    const zOffset = z < 0 ? -17.7 : 17.7;
+    addLabel(label, [x, 2.5, zOffset], 4, 100);
+}
+
+addGate(10, -17.9, '1');
+addGate(-10, -17.9, '2');
+addGate(10, 17.9, '3');
+
+// ===== ЛЕСТНИЦА =====
+const stairX = -9.5;
+const stairZStart = 18;
+const stairZEnd = 13;
+const stairHeight = 3.5;
+const numSteps = 14;
+const stairLength = Math.abs(stairZEnd - stairZStart);
+const stairIncline = Math.atan2(stairHeight, stairLength);
+
+const stairBase = new THREE.Mesh(new THREE.BoxGeometry(5, 0.15, stairLength), matStairs);
+stairBase.position.set(stairX, stairHeight / 2, (stairZStart + stairZEnd) / 2);
+stairBase.rotation.x = stairIncline;
+stairBase.castShadow = true;
+scene.add(stairBase);
+
+for (let i = 0; i < numSteps; i++) {
+    const t = i / numSteps;
+    const step = new THREE.Mesh(new THREE.BoxGeometry(4.5, 0.2, 0.3), matStairs);
+    step.position.set(stairX, stairHeight * t + 0.1, stairZStart - t * stairLength);
+    step.castShadow = true;
+    scene.add(step);
+}
+
+// ===== ФУНКЦИЯ СОЗДАНИЯ КАМЕРЫ (без подписи) =====
+function createCamera(colX, colZ, height, label, sideOffset, targetX, targetZ, group, isLower = false) {
+    const cameraGroup = new THREE.Group();
+    
+    const bodyColor = isLower ? 0xff8800 : 0x2c3e50;
+    const matCamBody = new THREE.MeshStandardMaterial({color: bodyColor, roughness: 0.3, metalness: 0.7});
+    const matCamLens = new THREE.MeshStandardMaterial({color: 0x1a1a1a, roughness: 0.1, metalness: 0.9});
+    const matCamBracket = new THREE.MeshStandardMaterial({color: 0x555555, roughness: 0.5, metalness: 0.8});
+    const matCamLED = new THREE.MeshStandardMaterial({color: 0xff0000, emissive: 0xff0000, emissiveIntensity: 0.5});
+    
+    // Корпус камеры
+    const body = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 0.4, 16), matCamBody);
+    body.rotation.x = Math.PI / 2;
+    body.position.set(0, 0, 0);
+    cameraGroup.add(body);
+    
+    // Объектив
+    const lens = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.15, 16), matCamLens);
+    lens.rotation.x = -Math.PI / 2;
+    lens.position.set(0, 0, 0.27);
+    cameraGroup.add(lens);
+    
+    // Козырёк
+    const hood = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.08, 0.2), matCamBody);
+    hood.position.set(0, 0.12, 0.1);
+    cameraGroup.add(hood);
+    
+    // Кронштейн
+    const bracket = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.3, 0.08), matCamBracket);
+    bracket.position.set(0, -0.2, 0);
+    cameraGroup.add(bracket);
+    
+    // Основание
+    const base = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.05, 0.15), matCamBracket);
+    base.position.set(0, -0.35, 0);
+    cameraGroup.add(base);
+    
+    // LED
+    const led = new THREE.Mesh(new THREE.SphereGeometry(0.03, 8, 8), matCamLED);
+    led.position.set(0.1, 0.1, 0.1);
+    cameraGroup.add(led);
+    
+    // Позиция камеры
+    cameraGroup.position.set(colX + sideOffset, height, colZ);
+    
+    // Поворот камеры на цель (ворота)
+    const dx = targetX - (colX + sideOffset);
+    const dz = targetZ - colZ;
+    const angle = Math.atan2(dx, dz);
+    cameraGroup.rotation.y = angle;
+    
+    cameraGroup.castShadow = true;
+    group.add(cameraGroup);
+    
+    // Подпись камеры УБРАНА
+}
+
+// ===== ГРУППЫ ВАРИАНТОВ =====
+const variant1Group = new THREE.Group();
+const variant2Group = new THREE.Group();
+const variant3Group = new THREE.Group();
+scene.add(variant1Group);
+scene.add(variant2Group);
+scene.add(variant3Group);
+
+// Координаты ворот
+const gate1X = 10, gate1Z = -17.9;  // Ворота 1
+const gate2X = -10, gate2Z = -17.9; // Ворота 2
+
+// ===== ВАРИАНТ 1: 2 камеры на 3,5 м =====
+function buildVariant1() {
+    createCamera(-6.5, -5.5, 3.5, 'CAM-1', -1.0, gate2X, gate2Z, variant1Group);
+    createCamera(6.5, -5.5, 3.5, 'CAM-2', +1.0, gate1X, gate1Z, variant1Group);
+    addLabel('ВАРИАНТ 1: 2 камеры (h=3,5 м)', [0, 7, 0], 6, 40);
+}
+
+// ===== ВАРИАНТ 2: 4 камеры =====
+function buildVariant2() {
+    createCamera(-6.5, -5.5, 3.5, 'CAM-1', -1.0, gate2X, gate2Z, variant2Group);
+    createCamera(6.5, -5.5, 3.5, 'CAM-2', +1.0, gate1X, gate1Z, variant2Group);
+    createCamera(-6.5, -8.5, 3.0, 'CAM-3', -1.0, gate2X, gate2Z, variant2Group, true);
+    createCamera(6.5, -8.5, 3.0, 'CAM-4', +1.0, gate1X, gate1Z, variant2Group, true);
+    addLabel('ВАРИАНТ 2: 4 камеры (3,5 м + 3,0 м)', [0, 7, 0], 6, 40);
+}
+
+// ===== ВАРИАНТ 3: 6 камер =====
+function buildVariant3() {
+    createCamera(-6.5, -5.5, 3.5, 'CAM-1', -1.0, gate2X, gate2Z, variant3Group);
+    createCamera(6.5, -5.5, 3.5, 'CAM-2', +1.0, gate1X, gate1Z, variant3Group);
+    createCamera(-6.5, -8.5, 3.0, 'CAM-3', -1.0, gate2X, gate2Z, variant3Group, true);
+    createCamera(6.5, -8.5, 3.0, 'CAM-4', +1.0, gate1X, gate1Z, variant3Group, true);
+    createCamera(-6.5, 6.5, 3.5, 'CAM-5', -1.0, gate2X, gate2Z, variant3Group);
+    createCamera(6.5, 6.5, 3.5, 'CAM-6', +1.0, gate1X, gate1Z, variant3Group);
+    addLabel('ВАРИАНТ 3: 6 камер (3,5 м + 3,0 м)', [0, 7, 0], 6, 40);
+}
+
+buildVariant1();
+buildVariant2();
+buildVariant3();
+
+// ===== ПОДПИСИ =====
+function addLabel(text, pos, scale = 4, fontSize = 40) {
+    const canvas = document.createElement('canvas');
+    canvas.width = 512; canvas.height = 128;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = 'rgba(0,0,0,0.85)';
+    ctx.fillRect(0, 0, 512, 128);
+    ctx.fillStyle = '#ffd700';
+    ctx.font = `bold ${fontSize}px Arial`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(text, 256, 64);
+    const tex = new THREE.CanvasTexture(canvas);
+    const sprite = new THREE.Sprite(new THREE.SpriteMaterial({map: tex}));
+    sprite.position.set(...pos);
+    sprite.scale.set(scale, scale/4, 1);
+    scene.add(sprite);
+}
+
+addLabel('ВТОРОЙ ЭТАЖ', [0, 5, -2.5], 6, 40);
+addLabel('ОФИС', [0, 4.5, 16], 4, 40);
+addLabel('САНУЗЕЛ', [-16, 4.5, 14.5], 3, 40);
+addLabel('ЛЕСТНИЦА', [-9.5, 5, 15.5], 3, 40);
+
+// ===== ПЕРЕКЛЮЧЕНИЕ =====
+function showVariant(n) {
+    variant1Group.visible = (n === 1);
+    variant2Group.visible = (n === 2);
+    variant3Group.visible = (n === 3);
+    document.querySelectorAll('.btn').forEach((btn, i) => {
+        btn.classList.toggle('active', i + 1 === n);
+    });
+}
+showVariant(2);
+
+function animate() {
+    requestAnimationFrame(animate);
+    controls.update();
+    renderer.render(scene, camera);
+}
+animate();
+
+window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+});
+</script>
+</body>
+</html>
